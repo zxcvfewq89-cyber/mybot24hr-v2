@@ -1,4 +1,4 @@
-Import nextcord
+import nextcord
 from nextcord.ext import commands
 import base64, codecs
 import os
