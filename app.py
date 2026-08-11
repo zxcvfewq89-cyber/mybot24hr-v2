@@ -1,5 +1,6 @@
 import os
 import threading
+import asyncio
 from flask import Flask
 import nextcord
 from nextcord.ext import commands
@@ -25,11 +26,12 @@ def home():
 def run_web():
     app.run(host="0.0.0.0", port=10000)
 
-# 2. ตั้งค่าบอท Nextcord
+# 2. ตั้งค่าบอท Nextcord และเปิด Intents ครบถ้วน (แก้ปัญหาบอทไม่เห็นห้องเสียง)
 intents = nextcord.Intents.default()
 intents.message_content = True
 intents.voice_states = True
 intents.guilds = True
+intents.members = True
 
 bot = commands.Bot(command_prefix='!', help_command=None, intents=intents)
 
@@ -41,12 +43,21 @@ async def on_ready():
     await bot.change_presence(activity=nextcord.Streaming(
         name="Phakaphop", url="https://www.twitch.tv/phakaphpop"))
     
+    # หน่วงเวลา 3 วินาทีเพื่อให้บอทเชื่อมต่อเซิร์ฟเวอร์และโหลดช่องทั้งหมดเสร็จก่อน
+    await asyncio.sleep(3)
+    
     try:
         guild = bot.get_guild(BotSever1)
         if guild:
-            vc = nextcord.utils.get(guild.channels, id=BotSever2)
+            # ใช้ get_channel เพื่อดึงห้องเสียงให้ชัวร์ยิ่งขึ้น
+            vc = guild.get_channel(BotSever2)
             if vc and not guild.voice_client:
                 await vc.connect(self_deaf=True)
+                print(f"Successfully joined voice channel: {vc.name}")
+            else:
+                print("Could not find voice channel or already connected.")
+        else:
+            print("Could not find guild.")
     except Exception as e:
         print(f"Voice join error: {e}")
         
@@ -89,6 +100,6 @@ if __name__ == "__main__":
     web_thread.daemon = True
     web_thread.start()
 
-    # ดึง Token จากระบบความปลอดภัยของ Render (ป้องกัน Token หลุด)
+    # ดึง Token จาก Environment Variables ของ Render อย่างปลอดภัย
     token = os.environ.get("DISCORD_TOKEN")
     bot.run(token)
