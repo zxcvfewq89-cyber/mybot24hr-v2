@@ -29,4 +29,5 @@ async def on_voice_state_update(member, before, after):
         print(f'{member.name} is in {after.channel.name} and started speaking.')
 
 # รันบอทด้วย Token ลับจากหน้า Settings
-bot.run(os.getenv("DISCORD_TOKEN"))
+bot.run("MTUxNTM5NzY1Mzc1MDQ4MDk2Ng.GU0il9.JDxxwTay46qwJd7M9XigsbBSKAD9T2FAA98hNc")
+
