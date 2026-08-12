@@ -35,34 +35,19 @@ async def on_ready():
     ))
     print(f'Logged in as {bot.user}')
     
-    # เชื่อมต่อห้องเสียงตอนเริ่มบอท
-    await asyncio.sleep(5)
-    await connect_to_voice()
-
-async def connect_to_voice():
+    # หน่วงเวลาให้บอทเชื่อมต่อเซิร์ฟเวอร์ดิสคอร์ดเสถียรก่อนเข้าห้อง
+    await asyncio.sleep(8)
+    
     guild = bot.get_guild(BotSever1)
     if guild:
         vc = guild.get_channel(BotSever2)
-        if vc:
+        if vc and not guild.voice_client:
             try:
-                if not guild.voice_client:
-                    voice_client = await vc.connect()
-                    await voice_client.guild.change_voice_state(channel=vc, self_deaf=True)
-                    print("Joined voice channel successfully.")
-                elif guild.voice_client.channel != vc:
-                    await guild.voice_client.move_to(vc)
-                    print("Moved to target voice channel.")
+                voice_client = await vc.connect()
+                await voice_client.guild.change_voice_state(channel=vc, self_deaf=True)
+                print("Joined voice channel successfully.")
             except Exception as e:
-                print(f"Voice join error: {e}")
-
-# ระบบตรวจจับหากบอทหลุดจากห้อง ให้ดึงกลับเข้าห้องอัตโนมัติ
-@bot.event
-async def on_voice_state_update(member, before, after):
-    if member.id == bot.user.id:
-        if after.channel is None:
-            print("Bot was disconnected from voice channel. Reconnecting in 5 seconds...")
-            await asyncio.sleep(5)
-            await connect_to_voice()
+                print(f"Auto-join error: {e}")
 
 # --- Slash Commands ---
 @bot.slash_command(name="join", description="สั่งให้บอทเข้าห้องเสียง")
@@ -110,3 +95,4 @@ if __name__ == "__main__":
 
     token = os.environ.get("DISCORD_TOKEN")
     bot.run(token)
+
