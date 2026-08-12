@@ -2,4 +2,3 @@ nextcord
 flask
 pynacl
 yt-dlp
-
