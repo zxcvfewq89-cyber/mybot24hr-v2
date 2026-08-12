@@ -1,4 +1,4 @@
-nextcord
+discord.py
 flask
 pynacl
 yt-dlp
