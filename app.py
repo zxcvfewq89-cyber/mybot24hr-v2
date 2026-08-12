@@ -24,7 +24,6 @@ intents.members = True
 
 bot = commands.Bot(help_command=None, intents=intents)
 
-# เปลี่ยนไอดีให้ถูกต้องตามของคุณ
 BotSever1 = 1204647300870311986
 BotSever2 = 1512082655305404456
 
@@ -32,26 +31,40 @@ BotSever2 = 1512082655305404456
 async def on_ready():
     await bot.change_presence(activity=nextcord.Activity(
         type=nextcord.ActivityType.watching, 
-        name="บอทกำลังออนไลน์"
+        name="บอทออนไลน์ 24 ชม."
     ))
     print(f'Logged in as {bot.user}')
     
-    # ลองเชื่อมต่อห้องเสียงอัตโนมัติ
+    # เชื่อมต่อห้องเสียงตอนเริ่มบอท
     await asyncio.sleep(5)
+    await connect_to_voice()
+
+async def connect_to_voice():
     guild = bot.get_guild(BotSever1)
     if guild:
         vc = guild.get_channel(BotSever2)
-        if vc and not guild.voice_client:
+        if vc:
             try:
-                # --- แก้ไขตรงนี้: สร้าง VoiceClient และกำหนด deafen แยก ---
-                voice_client = await vc.connect()
-                await voice_client.guild.change_voice_state(channel=vc, self_deaf=True)
-                print("Joined voice channel successfully (self-deaf enabled).")
-                # --------------------------------------------------
+                if not guild.voice_client:
+                    voice_client = await vc.connect()
+                    await voice_client.guild.change_voice_state(channel=vc, self_deaf=True)
+                    print("Joined voice channel successfully.")
+                elif guild.voice_client.channel != vc:
+                    await guild.voice_client.move_to(vc)
+                    print("Moved to target voice channel.")
             except Exception as e:
-                print(f"Auto-join error: {e}")
+                print(f"Voice join error: {e}")
 
-# --- Slash Commands (ไม่มีการเปลี่ยนแปลง) ---
+# ระบบตรวจจับหากบอทหลุดจากห้อง ให้ดึงกลับเข้าห้องอัตโนมัติ
+@bot.event
+async def on_voice_state_update(member, before, after):
+    if member.id == bot.user.id:
+        if after.channel is None:
+            print("Bot was disconnected from voice channel. Reconnecting in 5 seconds...")
+            await asyncio.sleep(5)
+            await connect_to_voice()
+
+# --- Slash Commands ---
 @bot.slash_command(name="join", description="สั่งให้บอทเข้าห้องเสียง")
 async def join(interaction: nextcord.Interaction):
     if interaction.user.voice and interaction.user.voice.channel:
@@ -59,7 +72,6 @@ async def join(interaction: nextcord.Interaction):
         if interaction.guild.voice_client:
             await interaction.guild.voice_client.move_to(channel)
         else:
-            # --- ต้องแก้ตรงนี้ในคำสั่ง join ด้วย ---
             voice_client = await channel.connect()
             await voice_client.guild.change_voice_state(channel=channel, self_deaf=True)
         await interaction.response.send_message(f"✅ เข้าห้อง {channel.name} เรียบร้อย!", ephemeral=True)
