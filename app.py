@@ -15,7 +15,7 @@ def home():
 def run_web():
     app.run(host="0.0.0.0", port=10000)
 
-# 2. ตั้งค่าบอทและ Intents ทั้งหมดเพื่อให้มองเห็นช่องเสียง
+# 2. ตั้งค่าบอทและ Intents
 intents = nextcord.Intents.all()
 intents.message_content = True
 intents.voice_states = True
@@ -23,41 +23,40 @@ intents.guilds = True
 
 bot = commands.Bot(command_prefix='!', help_command=None, intents=intents)
 
-BotSever1 = 1204647300870311986  # ไอดี เซิร์ฟเวอร์ดิสคอร์ด[span_0](start_span)[span_0](end_span)
-BotSever2 = 1512082655305404456  # ไอดี ห้องที่จะให้บอทลง[span_1](start_span)[span_1](end_span)
+BotSever2 = 1512082655305404456  # ไอดี ห้องที่จะให้บอทลง
 
 @bot.event
 async def on_ready():
-    print(f'Logged in as {bot.user}[span_2](start_span)[span_2](end_span)')
+    print(f'Logged in as {bot.user}')
     await bot.change_presence(activity=nextcord.Streaming(
-        name="Phakaphop", url="https://www.twitch.tv/phakaphpop"))[span_3](start_span)[span_3](end_span)
+        name="Phakaphop", url="https://www.twitch.tv/phakaphpop"))
+    print('Bot is ready.')
+
+# 3. คำสั่ง Slash Command สั่งให้บอทเข้าห้องเสียง
+@bot.slash_command(name="join", description="สั่งให้บอทเข้าห้องเสียงสแตนด์บาย")
+async def join(interaction: nextcord.Interaction):
+    # ค้นหาห้องเสียงจาก ID ที่กำหนดไว้
+    channel = bot.get_channel(BotSever2)
     
-    # รอให้แคชของบอทโหลดข้อมูลเซิร์ฟเวอร์ทั้งหมดเสร็จก่อน (สำคัญมาก)
-    await asyncio.sleep(5)
-    
-    guild = bot.get_guild(BotSever1)
-    if guild:
-        vc = guild.get_channel(BotSever2)
-        if vc:
-            try:
-                # เช็คว่าเชื่อมต่ออยู่แล้วหรือยัง ถ้ายังให้เชื่อมต่อใหม่
-                if guild.voice_client:
-                    await guild.voice_client.move_to(vc)
-                else:
-                    voice_client = await vc.connect()
-                    await voice_client.guild.change_voice_state(channel=vc, self_mute=False, self_deaf=True)[span_4](start_span)[span_4](end_span)
-                print('Bot is ready and connected to voice.')[span_5](start_span)[span_5](end_span)
-            except Exception as e:
-                print(f"Voice connection error: {e}")
-        else:
-            print("Error: Could not find the voice channel! Please check CHANNEL ID.")
+    if channel:
+        try:
+            # ถ้าบอทรออยู่ในห้องอื่น ให้ย้ายมา หรือถ้ายังไม่เข้าให้เชื่อมต่อ
+            if interaction.guild.voice_client:
+                await interaction.guild.voice_client.move_to(channel)
+            else:
+                voice_client = await channel.connect()
+                await voice_client.guild.change_voice_state(channel=channel, self_mute=False, self_deaf=True)
+            
+            await interaction.response.send_message(f"✅ บอทเข้ามาสแตนด์บายในห้อง **{channel.name}** เรียบร้อย!", ephemeral=True)
+        except Exception as e:
+            await interaction.response.send_message(f"❌ เกิดข้อผิดพลาดในการเข้าห้อง: {e}", ephemeral=True)
     else:
-        print("Error: Could not find the guild! Please check GUILD ID.")
+        await interaction.response.send_message("❌ไม่พบห้องเสียงที่ตั้งค่าไว้ กรุณาตรวจสอบ ID ห้องอีกครั้ง", ephemeral=True)
 
 @bot.event
 async def on_voice_state_update(member, before, after):
     if after.channel and after.self_stream:
-        print(f'{member.name} is in {after.channel.name} and started speaking.')[span_6](start_span)[span_6](end_span)
+        print(f'{member.name} is in {after.channel.name} and started speaking.')
 
 if __name__ == "__main__":
     # รันเว็บเซิร์ฟเวอร์เบื้องหลัง
