@@ -4,57 +4,70 @@ import asyncio
 from flask import Flask
 import nextcord
 from nextcord.ext import commands
-import yt_dlp
 
-# เว็บเซิร์ฟเวอร์
+# 1. เว็บเซิร์ฟเวอร์ Flask สำหรับ Render
 app = Flask(__name__)
+
 @app.route("/")
-def home(): return "Bot is running 24/7!"
+def home():
+    return "Bot is running 24/7!"
 
-def run_web(): app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+def run_web():
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port, use_reloader=False)
 
-# ตั้งค่าบอท
-bot = commands.Bot(intents=nextcord.Intents.all())
-SONG_URL = "https://youtu.be/dHUPZiAwNC8?si=YVwaLBa2jYfGd1CL"
-CHANNEL_ID = 1512082655305404456
+# 2. ตั้งค่าบอท
+intents = nextcord.Intents.default()
+intents.message_content = True
+intents.voice_states = True
+intents.guilds = True
 
-def get_stream_url():
-    ydl_opts = {'format': 'bestaudio', 'noplaylist': True}
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(SONG_URL, download=False)
-        return info['url']
-
-async def play_loop(voice_client):
-    try:
-        url = get_stream_url()
-        ffmpeg_opts = {
-            'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-            'options': '-vn'
-        }
-        voice_client.play(nextcord.FFmpegPCMAudio(url, **ffmpeg_opts), after=lambda e: asyncio.run_coroutine_threadsafe(play_loop(voice_client), bot.loop))
-    except Exception as e:
-        print(f"Error: {e}")
-        await asyncio.sleep(5)
-        await play_loop(voice_client)
+bot = commands.Bot(command_prefix='!', help_command=None, intents=intents)
+CHANNEL_ID = 1512082655305404456 
 
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user}')
+    await bot.change_presence(activity=nextcord.Streaming(
+        name="Phakaphop", url="https://www.twitch.tv/phakaphpop"))
+    print('Bot is ready.')
+    
+    # เมื่อบอทออนไลน์ ให้เข้าห้องเสียงอัตโนมัติทันที
     channel = bot.get_channel(CHANNEL_ID)
     if channel:
-        vc = await channel.connect()
-        await vc.guild.change_voice_state(channel=channel, self_mute=False, self_deaf=True)
-        await play_loop(vc)
+        try:
+            voice_client = await channel.connect()
+            await voice_client.guild.change_voice_state(channel=channel, self_mute=False, self_deaf=True)
+            
+            # เล่นเสียงเงียบวนลูปเพื่อให้บอทอยู่ในห้องตลอดเวลา
+            def play_silent(err=None):
+                if voice_client and voice_client.is_connected():
+                    source = nextcord.FFmpegPCMAudio("anullsrc=r=48000:cl=stereo", pipe=True, before_options="-f lavfi")
+                    voice_client.play(source, after=play_silent)
+            
+            play_silent()
+            print("Bot joined voice channel and started 24/7 standby mode.")
+        except Exception as e:
+            print(f"Error joining channel: {e}")
 
+# 3. ระบบ Auto-Reconnect (ถ้าหลุด ดึงกลับเข้าห้องอัตโนมัติ)
 @bot.event
 async def on_voice_state_update(member, before, after):
-    if member.id == bot.user.id and after.channel is None:
-        await asyncio.sleep(2)
+    if member.id == bot.user.id and before.channel is not None and after.channel is None:
+        await asyncio.sleep(3)
         channel = bot.get_channel(CHANNEL_ID)
         if channel:
-            vc = await channel.connect()
-            await play_loop(vc)
+            try:
+                voice_client = await channel.connect()
+                def play_silent(err=None):
+                    source = nextcord.FFmpegPCMAudio("anullsrc=r=48000:cl=stereo", pipe=True, before_options="-f lavfi")
+                    voice_client.play(source, after=play_silent)
+                play_silent()
+            except: 
+                pass
 
 if __name__ == "__main__":
     threading.Thread(target=run_web, daemon=True).start()
-    bot.run(os.environ.get("DISCORD_TOKEN"))
+    token = os.environ.get("DISCORD_TOKEN")
+    if token: 
+        bot.run(token)
