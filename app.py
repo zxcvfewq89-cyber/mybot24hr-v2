@@ -23,40 +23,38 @@ intents.guilds = True
 
 bot = commands.Bot(command_prefix='!', help_command=None, intents=intents)
 
-BotSever2 = 1512082655305404456  # ไอดี ห้องที่จะให้บอทลง
+BotSever2 = 1512082655305404456  # ไอดี ห้องที่จะให้บอทลง[span_1](start_span)[span_1](end_span)
 
 @bot.event
 async def on_ready():
-    print(f'Logged in as {bot.user}')
+    print(f'Logged in as {bot.user}')[span_2](start_span)[span_2](end_span)
     await bot.change_presence(activity=nextcord.Streaming(
-        name="Phakaphop", url="https://www.twitch.tv/phakaphpop"))
-    print('Bot is ready.')
+        name="Phakaphop", url="https://www.twitch.tv/phakaphpop"))[span_3](start_span)[span_3](end_span)
+    print('Bot is ready.')[span_4](start_span)[span_4](end_span)
 
 # 3. คำสั่ง Slash Command สั่งให้บอทเข้าห้องเสียง
 @bot.slash_command(name="join", description="สั่งให้บอทเข้าห้องเสียงสแตนด์บาย")
 async def join(interaction: nextcord.Interaction):
-    # ค้นหาห้องเสียงจาก ID ที่กำหนดไว้
     channel = bot.get_channel(BotSever2)
     
     if channel:
         try:
-            # ถ้าบอทรออยู่ในห้องอื่น ให้ย้ายมา หรือถ้ายังไม่เข้าให้เชื่อมต่อ
             if interaction.guild.voice_client:
                 await interaction.guild.voice_client.move_to(channel)
             else:
                 voice_client = await channel.connect()
-                await voice_client.guild.change_voice_state(channel=channel, self_mute=False, self_deaf=True)
+                await voice_client.guild.change_voice_state(channel=channel, self_mute=False, self_deaf=True)[span_5](start_span)[span_5](end_span)
             
             await interaction.response.send_message(f"✅ บอทเข้ามาสแตนด์บายในห้อง **{channel.name}** เรียบร้อย!", ephemeral=True)
         except Exception as e:
             await interaction.response.send_message(f"❌ เกิดข้อผิดพลาดในการเข้าห้อง: {e}", ephemeral=True)
     else:
-        await interaction.response.send_message("❌ไม่พบห้องเสียงที่ตั้งค่าไว้ กรุณาตรวจสอบ ID ห้องอีกครั้ง", ephemeral=True)
+        await interaction.response.send_message("❌ ไม่พบห้องเสียงที่ตั้งค่าไว้ กรุณาตรวจสอบ ID ห้องอีกครั้ง", ephemeral=True)
 
 @bot.event
 async def on_voice_state_update(member, before, after):
     if after.channel and after.self_stream:
-        print(f'{member.name} is in {after.channel.name} and started speaking.')
+        print(f'{member.name} is in {after.channel.name} and started speaking.')[span_6](start_span)[span_6](end_span)
 
 if __name__ == "__main__":
     # รันเว็บเซิร์ฟเวอร์เบื้องหลัง
