@@ -114,10 +114,11 @@ class AFKBot:
             await voice_client.move_to(target_channel)
             print("🔄 บอท: ถูกย้ายห้อง ดึงกลับเข้าห้องที่กำหนดทันที!")
 
-        await asyncio.sleep(1)
+        # ปรับหน่วงเวลาเป็น 15 วินาที เพื่อป้องกันปัญหา Rate Limit (429 Too Many Requests)
+        await asyncio.sleep(15)
 
       except Exception:
-        await asyncio.sleep(1)
+        await asyncio.sleep(15)
 
   def setup_commands(self):
     bot = self.bot
@@ -132,7 +133,7 @@ class AFKBot:
       print(f"✅ บอทออนไลน์ในชื่อ: {bot.user}")
       print(f"✅ อยู่ใน {len(bot.guilds)} เซิร์ฟเวอร์")
       print(f"✅ ห้องเสียง ID: {self.voice_channel_id}")
-      print("🔇 โหมด: เงียบ (ไม่เล่นเสียง) | เช็คทุก 1 วินาที")
+      print("🔇 โหมด: เงียบ (ไม่เล่นเสียง) | เช็คทุก 15 วินาที")
 
       bot.loop.create_task(self.stay_in_voice())
 
@@ -215,7 +216,7 @@ class AFKBot:
 
       if voice_client and voice_client.channel:
         embed.add_field(
-            name="🟢 สถานะ", value="✅ กำลังยืนห้อง (เช็คทุก 1 วิ)", inline=True
+            name="🟢 สถานะ", value="✅ กำลังยืนห้อง (เช็คทุก 15 วิ)", inline=True
         )
         embed.add_field(
             name="🎤 ห้อง", value=f"<#{voice_client.channel.id}>", inline=True
@@ -231,7 +232,7 @@ class AFKBot:
           inline=False,
       )
 
-      embed.set_footer(text="🔥 Fast-AFK System (1s check)")
+      embed.set_footer(text="🔥 Fast-AFK System (15s check)")
       await interaction.response.send_message(embed=embed)
 
 
@@ -248,7 +249,7 @@ if __name__ == "__main__":
     sys.exit(1)
 
   print("=" * 50)
-  print("   🔥 ระบบบอทยืนห้อง (รันเว็บ + เช็คทุก 1 วินาที)")
+  print("   🔥 ระบบบอทยืนห้อง (รันเว็บ + เช็คทุก 15 วินาที)")
   print("=" * 50)
   print(f"   🎤 ห้องเสียง ID: {VOICE_CHANNEL_ID}")
   print("=" * 50)
