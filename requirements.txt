@@ -1,4 +1,4 @@
 discord.py
 flask
-pynacl
-yt-dlp
+PyNaCl
+requests
