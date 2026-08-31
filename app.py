@@ -1,23 +1,14 @@
 import asyncio
 from datetime import datetime
 import os
-import random
-import sys
 from threading import Thread
+import time
 import discord
-from discord.ext import commands, tasks
+from discord import app_commands
 from flask import Flask
-import requests
 
 # ==========================================
-# CONFIG (ดึง Token จาก Environment Variables ของโฮสต์)
-# ==========================================
-
-TOKEN = os.getenv("DISCORD_TOKEN")
-VOICE_CHANNEL_ID = 1512082646610739270  # ID ห้องเสียงของคุณ
-
-# ==========================================
-# สร้างเว็บเซิร์ฟเวอร์ด้วย Flask (สำหรับรันบนโฮสต์)
+# 1. ระบบเว็บเซิร์ฟเวอร์ (Flask) สำหรับรัน 24/7 บน Render
 # ==========================================
 
 app = Flask("")
@@ -25,26 +16,12 @@ app = Flask("")
 
 @app.route("/")
 def home():
-  return "Bot is running 24/7! 🔥 Fast-AFK System is active."
+  return "Bot is running 24/7! 🔥 Voice Control System is active."
 
 
 def run_web():
-  # ดึงพอร์ตจาก Render มาใช้โดยอัตโนมัติ (ป้องกันปัญหา No open ports detected)
-  port = int(os.environ.get("PORT", 7860))
+  port = int(os.environ.get("PORT", 10000))
   app.run(host="0.0.0.0", port=port)
-
-
-def self_ping():
-  while True:
-    try:
-      # ใช้พอร์ตที่รันจริงหรือเรียกผ่าน localhost
-      port = int(os.environ.get("PORT", 7860))
-      requests.get(f"http://127.0.0.1:{port}", timeout=5)
-    except Exception:
-      pass
-    import time
-
-    time.sleep(30)
 
 
 def keep_alive():
@@ -52,218 +29,131 @@ def keep_alive():
   t.daemon = True
   t.start()
 
-  p = Thread(target=self_ping)
-  p.daemon = True
-  p.start()
-
 
 # ==========================================
-# คลาสบอทยืนห้องเงียบๆ
+# 2. ตั้งค่าบอท Discord และ Intents
+# ==========================================
+
+TOKEN = os.getenv("DISCORD_TOKEN")
+
+intents = discord.Intents.default()
+intents.message_content = True
+intents.members = True
+intents.voice_states = True
+
+
+class VoiceBot(discord.Client):
+
+  def __init__(self):
+    super().__init__(intents=intents)
+    self.tree = app_commands.CommandTree(self)
+    self.start_time = None
+
+  async def setup_hook(self):
+    await self.tree.sync()
+    print("✅ Sync คำสั่ง Slash Command (/) เรียบร้อย")
+
+
+client = VoiceBot()
+
+# ==========================================
+# 3. ระบบนับเวลาออนไลน์
 # ==========================================
 
 
-class AFKBot:
+@client.event
+async def on_ready():
+  client.start_time = datetime.now()
+  print(f"✅ บอทออนไลน์ในชื่อ: {client.user}")
+  print(f"✅ อยู่ใน {len(client.guilds)} เซิร์ฟเวอร์")
 
-  def __init__(self, token, voice_channel_id):
-    self.token = token
-    self.voice_channel_id = voice_channel_id
-    self.bot = commands.Bot(command_prefix="!", intents=self.get_intents())
-    self.start_time = datetime.now()
-    self.setup_tasks()
-    self.setup_commands()
+  # เริ่มลูปอัปเดตสถานะนับเวลาทุกๆ 1 นาที
+  client.loop.create_task(update_uptime_presence())
 
-  def get_intents(self):
-    intents = discord.Intents.default()
-    intents.message_content = True
-    intents.members = True
-    intents.voice_states = True
-    return intents
 
-  def setup_tasks(self):
-    @tasks.loop(seconds=1)
-    async def rotate_presence():
+async def update_uptime_presence():
+  while True:
+    if client.start_time:
       now = datetime.now()
-      uptime_duration = now - self.start_time
+      uptime_duration = now - client.start_time
       hours = int(uptime_duration.total_seconds() // 3600)
       minutes = int((uptime_duration.total_seconds() % 3600) // 60)
       seconds = int(uptime_duration.total_seconds() % 60)
 
+      # ข้อความที่จะแสดงตรงสถานะบอท
       uptime_text = (
           f"⏱️ เปิดมาแล้ว: {hours}ชม. {minutes:02d}นาที {seconds:02d}วินาที"
       )
       activity = discord.CustomActivity(name=uptime_text)
-      await self.bot.change_presence(activity=activity)
-
-    self.rotate_presence_task = rotate_presence
-
-  async def stay_in_voice(self):
-    while True:
-      try:
-        voice_client = None
-        if self.bot.guilds:
-          for vc in self.bot.voice_clients:
-            if vc.guild.id == self.bot.guilds[0].id:
-              voice_client = vc
-              break
-
-        if not voice_client:
-          channel = self.bot.get_channel(self.voice_channel_id)
-          if channel:
-            voice_client = await channel.connect()
-            print(f"✅ บอท: เข้าห้อง {channel.name} แล้ว (เงียบ)")
-
-        if voice_client and voice_client.channel.id != self.voice_channel_id:
-          target_channel = self.bot.get_channel(self.voice_channel_id)
-          if target_channel:
-            await voice_client.move_to(target_channel)
-            print("🔄 บอท: ถูกย้ายห้อง ดึงกลับเข้าห้องที่กำหนดทันที!")
-
-        await asyncio.sleep(15)
-
-      except Exception:
-        await asyncio.sleep(15)
-
-  def setup_commands(self):
-    bot = self.bot
-
-    @bot.event
-    async def on_ready():
-      self.start_time = datetime.now()
-
-      if not self.rotate_presence_task.is_running():
-        self.rotate_presence_task.start()
-
-      print(f"✅ บอทออนไลน์ในชื่อ: {bot.user}")
-      print(f"✅ อยู่ใน {len(bot.guilds)} เซิร์ฟเวอร์")
-      print(f"✅ ห้องเสียง ID: {self.voice_channel_id}")
-      print("🔇 โหมด: เงียบ (ไม่เล่นเสียง) | เช็คทุก 15 วินาที")
-
-      bot.loop.create_task(self.stay_in_voice())
-
-      try:
-        await bot.tree.sync()
-        print("✅ Sync คำสั่ง Slash Command (/) เรียบร้อย")
-      except Exception as e:
-        print(f"❌ Sync Error: {e}")
-
-    @bot.event
-    async def on_voice_state_update(member, before, after):
-      if member.id != bot.user.id:
-        return
-
-      voice_client = discord.utils.get(bot.voice_clients, guild=member.guild)
-      if voice_client and before.channel and not after.channel:
-        await asyncio.sleep(1)
-        channel = bot.get_channel(self.voice_channel_id)
-        if channel:
-          await channel.connect()
-          print("🔄 บอท: หลุด/โดนเตะจากห้อง เชื่อมต่อใหม่ทันที!")
-
-    @bot.tree.command(name="join", description="🎤 สั่งให้บอทเข้าห้องเสียง")
-    async def join(interaction: discord.Interaction):
-      await interaction.response.defer()
-      channel = bot.get_channel(self.voice_channel_id)
-      if not channel:
-        embed = discord.Embed(
-            title="❌ Error", description="ไม่พบห้องเสียง", color=0xff0000
-        )
-        await interaction.followup.send(embed=embed)
-        return
-
-      voice_client = discord.utils.get(
-          bot.voice_clients, guild=interaction.guild
-      )
-      if voice_client:
-        await voice_client.move_to(channel)
-      else:
-        await channel.connect()
-
-      embed = discord.Embed(
-          title="✅ บอทเข้าห้องแล้ว!",
-          description=f"🎤 {channel.name}\n🔇 โหมดเงียบ",
-          color=0x00ff88,
-      )
-      await interaction.followup.send(embed=embed)
-
-    @bot.tree.command(name="leave", description="🎤 สั่งให้บอทออกจากห้องเสียง")
-    async def leave(interaction: discord.Interaction):
-      await interaction.response.defer()
-      voice_client = discord.utils.get(
-          bot.voice_clients, guild=interaction.guild
-      )
-      if voice_client:
-        await voice_client.disconnect()
-        embed = discord.Embed(title="✅ บอทออกจากห้องแล้ว!", color=0x00ff88)
-        await interaction.followup.send(embed=embed)
-      else:
-        embed = discord.Embed(
-            title="❌ Error",
-            description="บอทยังไม่ได้อยู่ในห้องเสียง",
-            color=0xff0000,
-        )
-        await interaction.followup.send(embed=embed)
-
-    @bot.tree.command(name="afk", description="📊 ดูสถานะบอท")
-    async def afk_status(interaction: discord.Interaction):
-      voice_client = discord.utils.get(
-          bot.voice_clients, guild=interaction.guild
-      )
-
-      now = datetime.now()
-      uptime_duration = now - self.start_time
-      hours = int(uptime_duration.total_seconds() // 3600)
-      minutes = int((uptime_duration.total_seconds() % 3600) // 60)
-      seconds = int(uptime_duration.total_seconds() % 60)
-
-      embed = discord.Embed(title="📊 สถานะบอท AFK", color=0x00ccff)
-
-      if voice_client and voice_client.channel:
-        embed.add_field(
-            name="🟢 สถานะ", value="✅ กำลังยืนห้อง (เช็คทุก 15 วิ)", inline=True
-        )
-        embed.add_field(
-            name="🎤 ห้อง", value=f"<#{voice_client.channel.id}>", inline=True
-        )
-      else:
-        embed.add_field(
-            name="🔴 สถานะ", value="❌ ไม่อยู่ในห้องเสียง", inline=True
-        )
-
-      embed.add_field(
-          name="⏱️ เปิดใช้งานมาแล้ว",
-          value=f"{hours} ชม. {minutes} นาที {seconds} วินาที",
-          inline=False,
-      )
-
-      embed.set_footer(text="🔥 Fast-AFK System (15s check)")
-      await interaction.response.send_message(embed=embed)
+      await client.change_presence(activity=activity)
+    await asyncio.sleep(1)
 
 
 # ==========================================
-# RUN
+# 4. สร้าง Slash Commands (/เข้าห้องเสียง, /ออกห้องเสียง)
+# ==========================================
+
+
+@client.tree.command(
+    name="เข้าห้องเสียง", description="🎤 สั่งให้บอทเข้ามาในห้องเสียงที่คุณอยู่"
+)
+async def join_voice(interaction: discord.Interaction):
+  if interaction.user.voice and interaction.user.voice.channel:
+    channel = interaction.user.voice.channel
+
+    if interaction.guild.voice_client is not None:
+      await interaction.guild.voice_client.move_to(channel)
+      await interaction.response.send_message(
+          f"🔄 ย้ายมาที่ห้อง **{channel.name}** เรียบร้อยครับ!", ephemeral=True
+      )
+    else:
+      await channel.connect()
+      await interaction.response.send_message(
+          f"✅ เข้ามาที่ห้อง **{channel.name}** แล้วครับ!", ephemeral=True
+      )
+  else:
+    await interaction.response.send_message(
+        "❌ คุณต้องเข้าห้องเสียงก่อนใช้งานคำสั่งนี้!", ephemeral=True
+    )
+
+
+@client.tree.command(
+    name="ออกห้องเสียง", description="🎤 สั่งให้บอทร่อกออกจากห้องเสียง"
+)
+async def leave_voice(interaction: discord.Interaction):
+  if interaction.guild.voice_client is not None:
+    await interaction.guild.voice_client.disconnect()
+    await interaction.response.send_message(
+        "✅ ออกจากห้องเสียงเรียบร้อยแล้วครับ!", ephemeral=True
+    )
+  else:
+    await interaction.response.send_message(
+        "❌ บอทยังไม่ได้อยู่ในห้องเสียงครับ!", ephemeral=True
+    )
+
+
+# ==========================================
+# RUN APPLICATION
 # ==========================================
 
 if __name__ == "__main__":
   if not TOKEN:
     print(
         "❌ Error: ไม่พบ Token กรุณาตั้งค่า Environment Variable ชื่อ"
-        " 'DISCORD_TOKEN' บนโฮสต์ให้เรียบร้อย"
+        " 'DISCORD_TOKEN' ให้เรียบร้อย"
     )
     sys.exit(1)
 
   print("=" * 50)
-  print("   🔥 ระบบบอทยืนห้อง (รันเว็บ + เช็คทุก 15 วินาที)")
+  print("   🔥 ระบบบอท Discord ควบคุมด้วยคำสั่งเสียง + นับเวลา")
   print("=" * 50)
-  print(f"   🎤 ห้องเสียง ID: {VOICE_CHANNEL_ID}")
-  print("=" * 50)
-  print("")
 
+  # เริ่มรันเว็บเซอร์เวอร์ไว้ก่อนเพื่อกัน Render ตัดระบบ
   keep_alive()
 
-  afk_bot = AFKBot(TOKEN, VOICE_CHANNEL_ID)
-
+  # รันบอท
   try:
-    asyncio.run(afk_bot.bot.start(TOKEN))
+    client.run(TOKEN)
   except KeyboardInterrupt:
     print("\n👋 หยุดการทำงานของบอทแล้ว!")
   except Exception as e:
