@@ -2,3 +2,4 @@ discord.py
 flask
 PyNaCl
 requests
+PyNaCl
