@@ -29,13 +29,17 @@ def home():
 
 
 def run_web():
-  app.run(host="0.0.0.0", port=7860)
+  # ดึงพอร์ตจาก Render มาใช้โดยอัตโนมัติ (ป้องกันปัญหา No open ports detected)
+  port = int(os.environ.get("PORT", 7860))
+  app.run(host="0.0.0.0", port=port)
 
 
 def self_ping():
   while True:
     try:
-      requests.get("http://127.0.0.1:7860", timeout=5)
+      # ใช้พอร์ตที่รันจริงหรือเรียกผ่าน localhost
+      port = int(os.environ.get("PORT", 7860))
+      requests.get(f"http://127.0.0.1:{port}", timeout=5)
     except Exception:
       pass
     import time
@@ -114,7 +118,6 @@ class AFKBot:
             await voice_client.move_to(target_channel)
             print("🔄 บอท: ถูกย้ายห้อง ดึงกลับเข้าห้องที่กำหนดทันที!")
 
-        # ปรับหน่วงเวลาเป็น 15 วินาที เพื่อป้องกันปัญหา Rate Limit (429 Too Many Requests)
         await asyncio.sleep(15)
 
       except Exception:
