@@ -3,3 +3,4 @@ flask
 PyNaCl
 requests
 PyNaCl==1.5.0
+libffi
