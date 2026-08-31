@@ -2,7 +2,6 @@ import asyncio
 from datetime import datetime
 import os
 from threading import Thread
-import time
 import discord
 from flask import Flask
 
@@ -30,7 +29,7 @@ def keep_alive():
 
 
 # ==========================================
-# 2. ตั้งค่าบอท Discord (ใช้ commands.Bot เพื่อความเสถียรของเสียง)
+# 2. ตั้งค่าบอท Discord
 # ==========================================
 
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -54,34 +53,45 @@ async def on_ready():
   start_time = datetime.now()
   print(f"✅ บอทออนไลน์ในชื่อ: {client.user}")
 
-  # เริ่มรันเวลานับถอยหลังโชว์ที่สถานะ
+  # เริ่มรันเวลานับโชว์ที่สถานะ
   client.loop.create_task(update_uptime_presence())
 
   # เชื่อมต่อเข้าห้องเสียงอัตโนมัติ
   if VOICE_CHANNEL_ID:
     try:
-      channel_id = int(VOICE_CHANNEL_ID)
-      # รอให้แคชโหลดเซิร์ฟเวอร์เสร็จครู่หนึ่ง
-      await asyncio.sleep(3)
+      channel_id = int(VOICE_CHANNEL_ID.strip())
+      print(f"🔄 กำลังค้นหาห้องเสียง ID: {channel_id}...")
 
+      # รอให้แคชโหลดและเชื่อมต่อระบบเกตเวย์เสร็จสมบูรณ์
+      await asyncio.sleep(5)
+
+      # ค้นหาห้องจากแคชหรือดึงตรงจาก API ของ Discord
       channel = client.get_channel(channel_id)
-      if not channel:
+      if channel is None:
+        print("⚠️ ไม่พบห้องในแคช กำลังดึงข้อมูลห้องโดยตรงจาก API...")
         channel = await client.fetch_channel(channel_id)
 
-      if channel and isinstance(channel, discord.VoiceChannel):
-        # เช็กว่าบอทอยู่ในห้องอื่นอยู่แล้วไหม ถ้ามีให้ออกก่อน
-        for vc in client.voice_clients:
-          await vc.disconnect(force=True)
+      if channel:
+        print(
+            f"🔍 พบห้องเสียง: {channel.name} (ประเภท:"
+            f" {type(channel).__name__})"
+        )
+        if isinstance(channel, discord.VoiceChannel):
+          # ตัดการเชื่อมต่อเดิม (ถ้ามีค้างอยู่)
+          for vc in list(client.voice_clients):
+            await vc.disconnect(force=True)
 
-        # เชื่อมต่อเข้าห้องเสียงโดยตรง
-        await channel.connect()
-        print(f"🎤 บอทเข้ามาอยู่ในห้องเสียง: {channel.name} สำเร็จ!")
+          print(f"🎤 กำลังสั่งให้บอทเข้าห้อง {channel.name}...")
+          await channel.connect()
+          print(f"🎉 บอทเข้ามาอยู่ในห้องเสียง {channel.name} สำเร็จเรียบร้อย!")
+        else:
+          print("❌ ID ที่ใส่มาไม่ใช่ห้องเสียง (Voice Channel) กรุณาตรวจสอบอีกครั้ง")
       else:
-        print("❌ ไม่พบ Voice Channel ตาม ID ที่ระบุ หรือไม่ใช่ห้องเสียง")
+        print("❌ ไม่พบห้องเสียงตาม ID ที่ระบุในระบบ")
     except Exception as e:
-      print(f"❌ เกิดข้อผิดพลาดตอนเข้าห้องเสียง: {e}")
+      print(f"❌ เกิดข้อผิดพลาดร้ายแรงขณะเข้าห้องเสียง: {e}")
   else:
-    print("⚠️ ยังไม่ได้ตั้งค่า VOICE_CHANNEL_ID")
+    print("⚠️ ยังไม่ได้ตั้งค่า VOICE_CHANNEL_ID ใน Environment Variables")
 
 
 async def update_uptime_presence():
