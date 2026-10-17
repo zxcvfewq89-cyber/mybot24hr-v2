@@ -1,6 +1,7 @@
 discord.py
 telethon
-primp
 aiohttp
 Pillow
-zxing-cpp
+zxingcpp
+primp
+requests
