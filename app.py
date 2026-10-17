@@ -27,7 +27,7 @@ except ImportError:
     ZXING_AVAILABLE = False
 
 BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN", "").strip()
-BANNER_URL = os.getenv("BANNER_URL", "https://i.postimg.cc/wxnxqqZ5/21exxc0mytmh1.gif")
+BANNER_URL = os.getenv("BANNER_URL", "https://www.image2url.com/r2/default/gifs/1792266286142-490f8b8f-0813-4bb7-b382-bfdfdcc48b8f.gif")
 DB_PATH = os.getenv("DB_PATH", "bot_users.db")
 
 STATUS = {
