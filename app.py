@@ -14,11 +14,17 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 
 import aiohttp
 from PIL import Image
-import zxingcpp
 import discord
 from discord.ext import commands
 from telethon import TelegramClient, events
 import primp
+
+# ป้องกัน Error กรณีไม่มี zxingcpp บนเซิร์ฟเวอร์
+try:
+    import zxingcpp
+    ZXING_AVAILABLE = True
+except ImportError:
+    ZXING_AVAILABLE = False
 
 BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN", "").strip()
 BANNER_URL = os.getenv("BANNER_URL", "https://i.postimg.cc/wxnxqqZ5/21exxc0mytmh1.gif")
@@ -759,6 +765,8 @@ class TelegramSessionManager:
                 )
 
     async def scan_photo(self, user_id, event, source_link, config):
+        if not ZXING_AVAILABLE:
+            return
         try:
             data = await event.download_media(bytes)
             loop = asyncio.get_event_loop()
@@ -1201,6 +1209,7 @@ def run_health_check():
 if __name__ == "__main__":
     if not BOT_TOKEN:
         raise SystemExit("DISCORD_BOT_TOKEN is required")
+    # เปิด HTTP Server ทันทีเพื่อผ่าน Health Check ของ Render
     threading.Thread(target=run_health_check, daemon=True).start()
     init_db()
     bot.run(BOT_TOKEN)
