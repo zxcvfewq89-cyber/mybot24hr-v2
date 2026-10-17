@@ -1,0 +1,17 @@
+app = "ชื่อ-แอปของคุณบน-fly"
+primary_region = "sin"
+
+[build]
+  # ไม่ต้องใส่บรรทัด dockerfile หากให้ Fly.io ตรวจจับโปรเจกต์ Python อัตโนมัติจาก requirements.txt และ Procfile
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+[vm]
+  cpu_kind = "shared"
+  cpu_count = 1
+  memory_mb = 256
