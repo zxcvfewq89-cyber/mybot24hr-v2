@@ -4,4 +4,3 @@ aiohttp
 Pillow
 primp
 requests
-zxingcpp
