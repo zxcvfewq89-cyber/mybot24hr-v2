@@ -1,8 +1,8 @@
-app = "ชื่อ-แอปของคุณบน-fly"
+app = "mybot24hr-v2"
 primary_region = "sin"
 
 [build]
-  # ไม่ต้องใส่บรรทัด dockerfile หากให้ Fly.io ตรวจจับโปรเจกต์ Python อัตโนมัติจาก requirements.txt และ Procfile
+  dockerfile = "Dockerfile"
 
 [http_service]
   internal_port = 8080
