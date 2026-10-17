@@ -10,6 +10,7 @@ import threading
 import functools
 from datetime import datetime, timezone
 from contextlib import contextmanager
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
 import aiohttp
 from PIL import Image
@@ -1183,8 +1184,23 @@ async def on_ready():
     asyncio.create_task(_presence_loop())
 
 
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"OK")
+    def log_message(self, format, *args):
+        pass
+
+def run_health_check():
+    port = int(os.getenv("PORT", 10000))
+    server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
+    server.serve_forever()
+
+
 if __name__ == "__main__":
     if not BOT_TOKEN:
         raise SystemExit("DISCORD_BOT_TOKEN is required")
+    threading.Thread(target=run_health_check, daemon=True).start()
     init_db()
     bot.run(BOT_TOKEN)
