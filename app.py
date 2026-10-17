@@ -10,9 +10,9 @@ import threading
 import functools
 from datetime import datetime, timezone
 from contextlib import contextmanager
-from http.server import HTTPServer, BaseHTTPRequestHandler
 
 import aiohttp
+from aiohttp import web
 from PIL import Image
 import discord
 from discord.ext import commands
@@ -1192,24 +1192,33 @@ async def on_ready():
     asyncio.create_task(_presence_loop())
 
 
-class HealthCheckHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write(b"OK")
-    def log_message(self, format, *args):
-        pass
+# --- ส่วนของ aiohttp Web Server สำหรับ Health Check บน Render ---
+async def handle_health_check(request):
+    return web.Response(text="OK", status=200)
 
-def run_health_check():
+async def start_health_check_server():
+    app = web.Application()
+    app.router.add_get('/', handle_health_check)
+    app.router.add_get('/health', handle_health_check)
+    
+    runner = web.AppRunner(app)
+    await runner.setup()
+    
     port = int(os.getenv("PORT", 10000))
-    server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
-    server.serve_forever()
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    await site.start()
+    logging.info(f"Health check HTTP server running on port {port}")
 
 
 if __name__ == "__main__":
     if not BOT_TOKEN:
         raise SystemExit("DISCORD_BOT_TOKEN is required")
-    # เปิด HTTP Server ทันทีเพื่อผ่าน Health Check ของ Render
-    threading.Thread(target=run_health_check, daemon=True).start()
+    
     init_db()
-    bot.run(BOT_TOKEN)
+
+    async def main():
+        # รัน Health Check Web Server และ รันบอท Discord พร้อมกัน
+        await start_health_check_server()
+        await bot.start(BOT_TOKEN)
+
+    asyncio.run(main())
