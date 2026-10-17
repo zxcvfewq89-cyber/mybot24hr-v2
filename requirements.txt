@@ -2,6 +2,5 @@ discord.py
 telethon
 aiohttp
 Pillow
-zxingcpp
 primp
 requests
