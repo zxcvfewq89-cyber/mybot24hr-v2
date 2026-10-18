@@ -1,6 +1,2 @@
-discord.py
-telethon
-aiohttp
-Pillow
-primp
+ccxt
 requests
