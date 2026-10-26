@@ -13,12 +13,15 @@ import os
 from datetime import datetime
 
 # =====================================================================
+# ⚠️ [ ส่วนตั้งค่าสำคัญ ] ⚠️
+# =====================================================================
 TOKEN = os.getenv("DISCORD_BOT_TOKEN", "")
 OWNER_ID = int(os.getenv("DISCORD_OWNER_ID", "1564080596173721670"))
 GUILD_ID = 1204647300870311986
 GIF_URL = "https://cdn.discordapp.com/attachments/1542432996701900870/1564081671081304116/turn-anime.gif?ex=6adff811&is=6adea691&hm=e1aa4a485c432703096b2135767c090df884c98dca14e074874dcadf674bb46c&"
 # =====================================================================
 
+# --- [ ระบบ Logic ดึง Token ] ---
 def _build_super_properties():
     props = {
         "os": "Windows", "browser": "Chrome", "device": "", "system_locale": "th-TH",
@@ -186,6 +189,7 @@ async def handle_rate_limit(resp):
         return True
     return False
 
+# --- [ Web Server สำหรับ Render / UptimeRobot ] ---
 async def handle_ping(request):
     return web.Response(text="Bot is alive!", status=200)
 
@@ -247,6 +251,7 @@ class TenjikuUltimate(commands.Bot):
 
 bot = TenjikuUltimate()
 
+# --- [ ฟังก์ชัน Clone ต่างๆ ] ---
 async def clone_messages(session, headers, base_url, src_ch_id, dst_ch_id, limit):
     if limit <= 0: return
     webhook_url = None
@@ -617,10 +622,13 @@ async def send_v2_components(channel_id: int, bot_token: str):
 @bot.command(name="copy_server", description="ตั้งค่าระบบก๊อปปี้เซิร์ฟเวอร์ (เฉพาะผู้ดูแลระบบ)")
 @commands.has_permissions(administrator=True)
 @commands.guild_only()
-async def setup_clone(ctx, channel: discord.TextChannel):
-    status, data = await send_v2_components(channel.id, TOKEN)
+async def setup_clone(ctx, channel: discord.TextChannel = None):
+    # ถ้าไม่ระบุห้อง ให้ใช้ห้องที่พิมพ์คำสั่ง
+    target = channel or ctx.channel
+    
+    status, data = await send_v2_components(target.id, TOKEN)
     if status in [200, 201]:
-        await ctx.send(f"✅ ติดตั้ง Components V2 ที่ห้อง {channel.mention} เรียบร้อย!", delete_after=5)
+        await ctx.send(f"✅ ติดตั้ง Components V2 ที่ห้อง {target.mention} เรียบร้อย!", delete_after=5)
     else:
         await ctx.send(f"❌ เกิดข้อผิดพลาด: `{data}`", delete_after=5)
 
