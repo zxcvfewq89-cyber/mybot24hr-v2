@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands, tasks
-from discord import ui, app_commands
+from discord import ui
 import aiohttp
 from aiohttp import web
 import asyncio
@@ -175,12 +175,6 @@ async def safe_followup(it: discord.Interaction, content=None, *, embed=None, ep
         except Exception: pass
     except Exception: pass
     return None
-
-async def safe_send_response(it: discord.Interaction, content=None, *, embed=None, ephemeral=True):
-    try:
-        if embed is not None: return await it.response.send_message(content=content, embed=embed, ephemeral=ephemeral)
-        return await it.response.send_message(content=content, ephemeral=ephemeral)
-    except (discord.NotFound, discord.HTTPException): return None
 
 async def handle_rate_limit(resp):
     if resp.status == 429:
@@ -618,31 +612,23 @@ async def send_v2_components(channel_id: int, bot_token: str):
             except Exception: data = {}
             return r.status, data
 
-@bot.tree.command(name="copy_server", description="ตั้งค่าระบบก๊อปปี้เซิร์ฟเวอร์ (เฉพาะผู้ดูแลระบบ)")
-@app_commands.describe(channel="เลือกห้องที่ต้องการให้บอทส่ง UI")
-@app_commands.default_permissions(administrator=True)
-@app_commands.guild_only()
-async def setup_clone(interaction: discord.Interaction, channel: discord.TextChannel):
-    if not interaction.guild or not interaction.user.guild_permissions.administrator: return await safe_send_response(interaction, "❌ มึงไม่มีสิทธิ์ใช้คำสั่งนี้!")
-    await interaction.response.defer(ephemeral=True)
-    status, data = await send_v2_components(channel.id, TOKEN)
-    if status in [200, 201]: await safe_followup(interaction, f"✅ ติดตั้ง Components V2 ที่ห้อง {channel.mention} เรียบร้อย!")
-    else: await safe_followup(interaction, f"❌ เกิดข้อผิดพลาด: `{data}`")
+# --- [ คำสั่งแบบ Prefix (ใช้ ! ) ] ---
 
-@bot.command(name="setup")
+@bot.command(name="copy_server", description="ตั้งค่าระบบก๊อปปี้เซิร์ฟเวอร์ (เฉพาะผู้ดูแลระบบ)")
 @commands.has_permissions(administrator=True)
 @commands.guild_only()
-async def setup_prefix(ctx, channel: discord.TextChannel = None):
-    target = channel or ctx.channel
-    status, data = await send_v2_components(target.id, TOKEN)
-    if status in [200, 201]: await ctx.send(f"✅ ติดตั้ง Components V2 ที่ห้อง {target.mention} เรียบร้อย!", delete_after=5)
-    else: await ctx.send(f"❌ เกิดข้อผิดพลาด: `{data}`", delete_after=5)
+async def setup_clone(ctx, channel: discord.TextChannel):
+    status, data = await send_v2_components(channel.id, TOKEN)
+    if status in [200, 201]:
+        await ctx.send(f"✅ ติดตั้ง Components V2 ที่ห้อง {channel.mention} เรียบร้อย!", delete_after=5)
+    else:
+        await ctx.send(f"❌ เกิดข้อผิดพลาด: `{data}`", delete_after=5)
 
-@bot.tree.command(name="pull_all_invites", description="ดึงลิงก์เชิญทุกดิสที่บอทอยู่")
-@app_commands.guild_only()
-async def pull_all_invites(interaction: discord.Interaction):
-    if interaction.user.id != OWNER_ID: return await safe_send_response(interaction, "❌ มึงไม่มีสิทธิ!")
-    await interaction.response.defer(ephemeral=True)
+@bot.command(name="pull_all_invites", description="ดึงลิงก์เชิญทุกดิสที่บอทอยู่")
+@commands.guild_only()
+async def pull_all_invites(ctx):
+    if ctx.author.id != OWNER_ID: return await ctx.send("❌ มึงไม่มีสิทธิ!")
+    msg = await ctx.send("⏳ กำลังดึงลิงก์...")
     results = [f"{len(bot.guilds)} เซิร์ฟเวอร์\n"]
     for guild in bot.guilds:
         try:
@@ -655,30 +641,12 @@ async def pull_all_invites(interaction: discord.Interaction):
     final_msg = "\n".join(results)
     if len(final_msg) > 2000:
         with open("invites.txt", "w", encoding="utf-8") as f: f.write(final_msg)
-        try: await interaction.followup.send("ส่งเป็นไฟล์:", file=discord.File("invites.txt"), ephemeral=True)
+        try: await ctx.send("ส่งเป็นไฟล์:", file=discord.File("invites.txt"))
         except Exception: pass
-    else: await safe_followup(interaction, final_msg)
+    else: await ctx.send(final_msg)
+    await msg.delete()
 
-@bot.command(name="sync")
-@commands.has_permissions(administrator=True)
-async def sync_cmd(ctx):
-    await ctx.send("⏳ กำลัง Sync คำสั่ง Slash...")
-    try:
-        synced = await bot.tree.sync(guild=ctx.guild)
-        await ctx.send(f"✅ Sync สำเร็จ! พบคำสั่งทั้งหมด {len(synced)} คำสั่ง (เฉพาะเซิร์ฟเวอร์นี้)")
-    except Exception as e:
-        await ctx.send(f"❌ เกิดข้อผิดพลาด: {e}")
-
-@bot.tree.command(name="sync_global", description="Sync คำสั่ง Slash แบบ Global (สำหรับทุกเซิร์ฟเวอร์)")
-@app_commands.default_permissions(administrator=True)
-async def sync_global(interaction: discord.Interaction):
-    await interaction.response.defer(ephemeral=True)
-    try:
-        synced = await bot.tree.sync()
-        await interaction.followup.send(f"✅ Sync Global สำเร็จ! พบคำสั่งทั้งหมด {len(synced)} คำสั่ง", ephemeral=True)
-    except Exception as e:
-        await interaction.followup.send(f"❌ เกิดข้อผิดพลาด: {e}", ephemeral=True)
-
+# --- [ เริ่มบอท ] ---
 if __name__ == "__main__":
     if not TOKEN:
         print("❌ ไม่พบ DISCORD_BOT_TOKEN! กรุณาตั้งค่าใน .env หรือ export ก่อนรัน")
