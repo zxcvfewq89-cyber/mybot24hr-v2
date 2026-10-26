@@ -13,15 +13,12 @@ import os
 from datetime import datetime
 
 # =====================================================================
-# ⚠️ [ ส่วนตั้งค่าสำคัญ ] ⚠️
-# =====================================================================
 TOKEN = os.getenv("DISCORD_BOT_TOKEN", "")
 OWNER_ID = int(os.getenv("DISCORD_OWNER_ID", "1564080596173721670"))
 GUILD_ID = 1204647300870311986
 GIF_URL = "https://cdn.discordapp.com/attachments/1542432996701900870/1564081671081304116/turn-anime.gif?ex=6adff811&is=6adea691&hm=e1aa4a485c432703096b2135767c090df884c98dca14e074874dcadf674bb46c&"
 # =====================================================================
 
-# --- [ ระบบ Logic ดึง Token ] ---
 def _build_super_properties():
     props = {
         "os": "Windows", "browser": "Chrome", "device": "", "system_locale": "th-TH",
@@ -195,7 +192,6 @@ async def handle_rate_limit(resp):
         return True
     return False
 
-# --- [ Web Server สำหรับ Render / UptimeRobot ] ---
 async def handle_ping(request):
     return web.Response(text="Bot is alive!", status=200)
 
@@ -257,7 +253,6 @@ class TenjikuUltimate(commands.Bot):
 
 bot = TenjikuUltimate()
 
-# --- [ ฟังก์ชัน Clone ต่างๆ ] ---
 async def clone_messages(session, headers, base_url, src_ch_id, dst_ch_id, limit):
     if limit <= 0: return
     webhook_url = None
