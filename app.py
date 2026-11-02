@@ -147,8 +147,8 @@ def build_copy_v2_components():
                 {
                     "type": 1,
                     "components": [
-                        {"type": 2, "style": 5, "label": "𝐈𝐧𝐬𝐭𝐚𝐠𝐫𝐚𝐦", "url": "https://www.instagram.com/boundless_835?igsh=MXNjMHo1NGZleXA2Mw==", "emoji": {"name": "📸"}},
-                        {"type": 2, "style": 5, "label": "𝐒𝐞𝐫𝐯𝐞𝐫 𝐃𝐢𝐬𝐜𝐨𝐫𝐝", "url": "https://discord.gg/68wdmyYBcX", "emoji": {"name": "💬"}}
+                        {"type": 2, "style": 5, "label": "𝐈𝐧𝐬𝐭𝐚𝐠𝐫𝐚𝐦", "url": "https://www.instagram.com/niburu2007?dlrf=MWYxNDl3cTlldHhqdQ==", "emoji": {"name": "📸"}},
+                        {"type": 2, "style": 5, "label": "𝐒𝐞𝐫𝐯𝐞𝐫 𝐃𝐢𝐬𝐜𝐨𝐫𝐝", "url": "https://discord.gg/3cehxNEHP8", "emoji": {"name": "💬"}}
                     ]
                 },
                 {
